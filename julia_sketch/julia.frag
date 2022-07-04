@@ -1,10 +1,16 @@
- // This shader folds uv space to draw the Koch curve
 
-// Mandelbrot/Julia set code from Mandelbrot/Julia set Coding Challenges and 
-// Mandelbrot Set Explained! by Martijn Steinrucken
+// This shader folds uv space to draw the Koch curve
+// The Julia set is inserted into the Koch curve for 
+// different values of c to craete a kaleiscope effect.
 
-// Koch curve code from KIFS Explained! tutorial
-// by Martijn Steinrucken aka The Art of Code/BigWings - 2020
+// Frag code based on:
+// Mandelbrot/Julia coding challenge by Daniel Shiffman
+
+
+// KIFS Explained! by The Art of Code (Martijn Steinrucken)
+// https://www.youtube.com/watch?v=il_Qg9AqQkE
+// Mandelbrot Explained! by The Art of Code
+// https://www.youtube.com/watch?v=6IWXkV82oyY
 
 #ifdef GL_ES
 precision mediump float;
@@ -18,12 +24,9 @@ uniform float colorAr;
 uniform float colorAg;
 uniform float colorAb;
 uniform float choice;
-uniform float tile;
 
 #define S smoothstep
 #define PI 3.14159
-#define GREEN vec3(125,206,130)/255.
-#define DKBLUE vec3(39,76,19)/255.
 
  // Create a normal line that rotates around origin
 vec2 N(float angle)
@@ -39,8 +42,12 @@ vec2 Reflect( vec2 uv, vec2 adj, vec2 n ) {
     return n*max(0., d)*2.0;
 }
 
-// Choose Julia set--values from Wikipeida
+// CHOOSE JULIA SET
+// Choices 0-9 alues from Wikipeida
 // https://en.wikipedia.org/wiki/Julia_set
+// Choices 10-12 from
+// The Beaty of Fractals, Peitgen & Richter, p193
+// Choices 13-16 from  //http://paulbourke.net/fractals/juliaset/
 vec2 chooseJulia( float choice ) {
   vec2 js = vec2(0);
   if (choice == 0.0) {
@@ -86,60 +93,36 @@ vec2 chooseJulia( float choice ) {
    else if (choice == 10.0) {
       vec2 c = vec2(-0.194, .6557);
       js += c;
-  }
+  }  
    else if (choice == 11.0) {
       vec2 c = vec2(-0.74543, .11301);
       js += c;
-  }
+  }  
   else if (choice == 12.0) {
       vec2 c = vec2(0.27334, .00742);
       js += c;
   }
    else if (choice == 13.0) {
-       //http://paulbourke.net/fractals/juliaset/
        vec2 c = vec2(.355, .355);
       js += c;
    }
    else if (choice == 14.0) {
-  //http://paulbourke.net/fractals/juliaset/
    vec2 c = vec2(-.54, 0.54);
       js += c;
   }
   else if (choice == 15.0) {
-  //http://paulbourke.net/fractals/juliaset/
    vec2 c = vec2(-.4, -0.59);
       js += c;
   }
   else if (choice == 16.0) {
-  //http://paulbourke.net/fractals/juliaset/
    vec2 c = vec2(0.32, 0.043);
       js += c;
   }
- 
  return  js;
 }
 
-// Create offset for mouseX
-vec2 chooseTile( float t ) {
-    vec2 mouse = iMouse.xy/u_resolution.xy;;
-    if (t == 0.0) {
-        mouse += vec2(0.0,0.0);
-    }
-    else if (t == 1.0) {
-        mouse += vec2(1.0,0.0);
-    }
-    else  if (t == 2.0) {
-        mouse += vec2(0.0,0.00);
-    }
-    else if (t == 3.0) {
-        mouse += vec2(1.0,0.0);
-    }
-    return mouse;
-}
-
-float Mandelbrot( vec2 uv, float k, float t, float choice ) {
+float Mandelbrot( vec2 uv, float k, vec2 m, float choice ) {
     
-    vec2 m = chooseTile( t );
     float zoom = pow(k, -m.x*k);
   
     vec2 c = uv*zoom;
@@ -153,8 +136,8 @@ float Mandelbrot( vec2 uv, float k, float t, float choice ) {
     for (float n = 0.0; n < maxiterations; n++) {
    
      z = vec2 (z.x*z.x - z.y*z.y, 2.*z.x*z.y) + c;
-     // if further away from 16 break
-     if ( length(z) > 16.0) break;
+     // if further away from 4 break
+     if ( length(z) > 4.0) break;
         iter++;
    }
    float bright = iter/maxiterations;
@@ -167,9 +150,10 @@ void main( )
 {
     // Normalized pixel coordinates (from 0 to 1)
     vec2 uv = (gl_FragCoord.xy-0.5*u_resolution.xy)/u_resolution.y;
+    vec2 mouse = iMouse.xy/u_resolution.xy;;
     float t =  iTime;
 
-    uv *= 1.75;
+    uv *= 2.0;
     vec3 col = vec3(0.0);
 
     // Code for the Koch curve
@@ -185,7 +169,8 @@ void main( )
     // we add a scaling factor so line does not change as uvs are divided
     float scale = 1.0;
     uv.x += 0.5;
-    for (int i = 0; i < 5; i++ ) {
+    // Change the number of iterations for Koch curve here!
+    for (int i = 0; i < 10; i++ ) {
     uv *= 3.0; // we multiply by 3. to divide the uvs
     scale *=3.0;
     uv.x  -= 1.5; // adjustment to translate uvs back to origin
@@ -193,19 +178,18 @@ void main( )
     uv.x = abs(uv.x);  // reflect uvs across line (uvs go from 1.0 - 0.0 - 1.0)
     uv.x -= 0.5;  // adjust length of line so that it is 3 units long
      
-    //mirror uvs around line 
-    uv -= n*min(0.0, dot(uv - vec2(0.0, 0.0), n))*2.; // uv.x*n.x + uv.y*n.y
+    // mirror uvs around line 
+    uv -= n*min(0.0, dot(uv - vec2(0.0, 0.0), n))*2.; 
     }
 
-    // for Koch curve Mandelbrot kaleidescope
-    //Choice value of c
+    // Choice value of c
     float c = choice;
-    float d = Mandelbrot( uv, 5.0, tile, c );
+    float d = Mandelbrot( uv, 10.0, mouse, c );
+   
     float s =  S(2./u_resolution.y, 0.0, d/scale);
   
-   // Coloring based on iterations
    //Approach to coloring Julia set from https://github.com/vharivinay/julia-set-with-shaders/
-  col = vec3(0.5-cos(d * 20.0)/2.0,0.5-cos(d * 30.0)/2.0,0.5-cos(d * 40.0)/2.0);
-  
-  gl_FragColor = vec4(col, 1.0);
+ vec3 col1 = vec3(0.5-cos(d * 20.0)/2.0,0.5-cos(d * 30.0)/2.0,0.5-cos(d * 40.0)/2.0);
+
+  gl_FragColor = vec4(col1, 1.0);
 }

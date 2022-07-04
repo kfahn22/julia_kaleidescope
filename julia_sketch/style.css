@@ -1,0 +1,21 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    background-color: #414142;
+  }
+  canvas {
+    display: block;
+  }
+  p {
+    color: #fff;
+    font-size: 30px;
+  }
+  label::after{
+    content: '\a';
+    white-space: pre;
+  }
+  div{
+    color: #fff;
+    font-size: 20px;
+  }
+  
